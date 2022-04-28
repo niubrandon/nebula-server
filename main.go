@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/golang-jwt/jwt"
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
 )
@@ -22,28 +23,66 @@ func main() {
 		{ID: 2, Email: "admin@nebula.com", Password: "superman"},
 	}
 
-	//TO-DO get OpenAPI
+	mySigningKey := []byte("AllYourBase")
+
+	type MyCustomClaims struct {
+		Foo string `json:"foo"`
+		jwt.StandardClaims
+	}
+
+	// Create the Claims
+
+	// TO-DO get OpenAPI
 	r := mux.NewRouter()
 
 	// POST on /users
 	r.HandleFunc("/users", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "You are trying to login")
 		var u user
-		//decode the payload
+		// decode the payload
 		if err := json.NewDecoder(r.Body).Decode(&u); err != nil {
 			http.Error(w, "bad request", 400)
 			return
 		}
-		//check if user is in database
+		// check if user is in database
+		for _, uu := range users {
+			fmt.Println("user is", uu.Email, uu.Password)
+			if u.Email == "niubrandon@nebula.com" {
+				fmt.Println("found email", uu.Email)
+				// check password
+				if uu.Password == u.Password {
+					fmt.Println("password is correct")
 
-		//send jwt
+					// Create the Claims
+					claims := MyCustomClaims{
+						//"bar",
+						uu.Email,
+						jwt.StandardClaims{
+							ExpiresAt: 15000,
+							Issuer:    "test",
+						},
+					}
+
+					// generate jwt token
+					token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+					ss, err := token.SignedString(mySigningKey)
+					fmt.Printf("%v %v", ss, err)
+					// send jwt as cookie
+					http.SetCookie(w, &http.Cookie{
+						Name:  "token",
+						Value: ss,
+					})
+					return
+				}
+
+			}
+		}
 
 		// vars := mux.Vars(r)
 		//	email := r.FormValue("email")
 		//	password := r.FormValue("password")
 		//check password
 
-		fmt.Println(u)
+		fmt.Println(u.Password)
 		fmt.Println(users)
 		//send jwt token
 	}).Methods("POST")
