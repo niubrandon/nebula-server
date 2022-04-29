@@ -37,6 +37,8 @@ func main() {
 
 	// POST on /users
 	r.HandleFunc("/users", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("Post request /users")
+		// vars := mux.Vars(r)
 		var u user
 		// decode the payload
 		if err := json.NewDecoder(r.Body).Decode(&u); err != nil {
@@ -45,10 +47,10 @@ func main() {
 		}
 		// check if user is in database
 		for _, uu := range users {
-			fmt.Println("user is", uu.Email, uu.Password)
+
 			if u.Email == "niubrandon@nebula.com" {
-				fmt.Println("found email", uu.Email)
-				// check password
+				fmt.Println("found user email:", uu.Email)
+				// found user now check password
 				if uu.Password == u.Password {
 					fmt.Println("password is correct")
 
@@ -61,7 +63,6 @@ func main() {
 							Issuer:    "test",
 						},
 					}
-
 					// generate jwt token
 					token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 					ss, err := token.SignedString(mySigningKey)
@@ -72,19 +73,14 @@ func main() {
 						Value: ss,
 					})
 					return
+				} else {
+					http.Error(w, "wrong password", 401)
+					return
 				}
-
 			}
 		}
 
-		// vars := mux.Vars(r)
-		//	email := r.FormValue("email")
-		//	password := r.FormValue("password")
-		//check password
-
-		fmt.Println(u.Password)
-		fmt.Println(users)
-		//send jwt token
+		http.Error(w, "user not found", 401)
 	}).Methods("POST")
 
 	fmt.Println("Starting up on 8080")
@@ -99,8 +95,4 @@ func main() {
 
 	handler := c.Handler(r)
 	http.ListenAndServe(":8080", handler)
-}
-
-func Hello(w http.ResponseWriter, req *http.Request) {
-	fmt.Fprintln(w, "Hello world!")
 }
