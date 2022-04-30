@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -8,10 +9,47 @@ import (
 
 	"github.com/golang-jwt/jwt"
 	"github.com/gorilla/mux"
+	_ "github.com/lib/pq"
 	"github.com/rs/cors"
 )
 
 func main() {
+
+	// db connection
+	const (
+		host = "localhost"
+		port = 5432
+		// use dbuser instead of user
+		dbuser     = "postgres"
+		dbpassword = "superman"
+		dbname     = "nebula"
+	)
+
+	// connection string
+	psqlconn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", host, port, dbuser, dbpassword, dbname)
+
+	//open database
+	db, err := sql.Open("postgres", psqlconn)
+	CheckError(err)
+
+	//close database
+	defer db.Close()
+
+	//check db
+	err = db.Ping()
+	CheckError(err)
+
+	fmt.Println("Connected!")
+
+	//insert hardcoded
+	insertStmt := `insert into "users"("id", "email", "password") values(1, 'admin@nebula.com', 'superman')`
+	_, e := db.Exec(insertStmt)
+	CheckError(e)
+
+	// dynamic
+	insertDynStmt := `insert into "users"("id", "email", "password") values($1, $2, $3)`
+	_, e = db.Exec(insertDynStmt, 2, "niubrandon@nebula.com", "superman")
+	CheckError(e)
 
 	type user struct {
 		ID       int    `json:"id"`
@@ -36,8 +74,8 @@ func main() {
 	// TO-DO get OpenAPI
 	r := mux.NewRouter()
 
-	// POST on /users
-	r.HandleFunc("/users", func(w http.ResponseWriter, r *http.Request) {
+	// POST on /login
+	r.HandleFunc("/users/login", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("Post request /users")
 		// vars := mux.Vars(r)
 		var u user
@@ -100,4 +138,10 @@ func main() {
 
 	handler := c.Handler(r)
 	http.ListenAndServe(":8080", handler)
+}
+
+func CheckError(err error) {
+	if err != nil {
+		panic(err)
+	}
 }

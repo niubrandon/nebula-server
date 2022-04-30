@@ -1,0 +1,13 @@
+DROP TABLE IF EXISTS transactions CASCADE;
+
+CREATE TABLE transactions (
+  id SERIAL PRIMARY KEY NOT NULL,
+  hash VARCHAR(255) NOT NULL,
+  from_address VARCHAR(255) NOT NULL,
+  to_address VARCHAR(255) NOT NULL,
+  token_name VARCHAR(255) NOT NULL,
+  quantity DOUBLE PRECISION NOT NULL,
+  unit_price BIGINT NOT NULL,
+  completed TIMESTAMP NOT NULL,
+  wallet_id INTEGER REFERENCES wallets(id) ON DELETE CASCADE
+);
