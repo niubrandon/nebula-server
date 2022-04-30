@@ -4,29 +4,32 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt"
 	"github.com/gorilla/mux"
+	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	"github.com/rs/cors"
 )
 
 func main() {
 
+	db_password := goDotEnvVariable("DB_PASSWORD")
 	// db connection
 	const (
 		host = "localhost"
 		port = 5432
 		// use dbuser instead of user
-		dbuser     = "postgres"
-		dbpassword = "superman"
-		dbname     = "nebula"
+		dbuser = "postgres"
+		dbname = "nebula"
 	)
 
 	// connection string
-	psqlconn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", host, port, dbuser, dbpassword, dbname)
+	psqlconn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", host, port, dbuser, db_password, dbname)
 
 	//open database
 	db, err := sql.Open("postgres", psqlconn)
@@ -42,15 +45,15 @@ func main() {
 	fmt.Println("Connected!")
 
 	//insert hardcoded
-	insertStmt := `insert into "users"("id", "email", "password") values(1, 'admin@nebula.com', 'superman')`
+	insertStmt := `insert into "users"("username", "email", "password", "phone") values('test','test@nebula.com', 'superman', '613-777-7777')`
 	_, e := db.Exec(insertStmt)
 	CheckError(e)
 
 	// dynamic
-	insertDynStmt := `insert into "users"("id", "email", "password") values($1, $2, $3)`
-	_, e = db.Exec(insertDynStmt, 2, "niubrandon@nebula.com", "superman")
-	CheckError(e)
-
+	/* 	insertDynStmt := `insert into "users"("id", "email", "password") values($1, $2, $3)`
+	   	_, e = db.Exec(insertDynStmt, 2, "niubrandon@nebula.com", "superman")
+	   	CheckError(e)
+	*/
 	type user struct {
 		ID       int    `json:"id"`
 		Email    string `json:"email"`
@@ -144,4 +147,16 @@ func CheckError(err error) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func goDotEnvVariable(key string) string {
+
+	// load .env file
+	err := godotenv.Load(".env")
+
+	if err != nil {
+		log.Fatalf("Error loading .env file")
+	}
+
+	return os.Getenv(key)
 }
