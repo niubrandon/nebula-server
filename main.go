@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/golang-jwt/jwt"
 	"github.com/gorilla/mux"
@@ -66,11 +67,14 @@ func main() {
 					// generate jwt token
 					token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 					ss, err := token.SignedString(mySigningKey)
+					expiresAt := time.Now().Add(1200 * time.Second)
 					fmt.Printf("%v %v", ss, err)
 					// send jwt as cookie
+
 					http.SetCookie(w, &http.Cookie{
-						Name:  "token",
-						Value: ss,
+						Name:    "session_token",
+						Value:   ss,
+						Expires: expiresAt,
 					})
 					return
 				} else {
@@ -89,6 +93,7 @@ func main() {
 	c := cors.New(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:3000", "http://foo.com:8080"},
 		AllowCredentials: true,
+		ExposedHeaders:   []string{"set-cookie"},
 		// Enable Debugging for testing, consider disabling in production
 		Debug: true,
 	})
