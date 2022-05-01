@@ -18,7 +18,6 @@ import (
 )
 
 func main() {
-
 	db_password := goDotEnvVariable("DB_PASSWORD")
 	// db connection
 	const (
