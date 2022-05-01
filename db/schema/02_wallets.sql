@@ -3,7 +3,7 @@ DROP TABLE IF EXISTS wallets CASCADE;
 CREATE TABLE wallets (
   id SERIAL PRIMARY KEY NOT NULL,
   nickname VARCHAR(255) NOT NULL,
-  publick_address VARCHAR(255) NOT NULL,
+  public_address VARCHAR(255) NOT NULL,
   private_key VARCHAR(255) NOT NULL,
   passphrase VARCHAR(255) NOT NULL,
   user_id INTEGER REFERENCES users(id) ON DELETE CASCADE
