@@ -86,7 +86,7 @@ func main() {
 			// encrpt password
 			hashedPwd := hashAndSalt([]byte(u.Password))
 			// add to db
-			result, err := db.Exec("INSERT INTO users (username, email, password, phone) VALUES ($1, $2, $3, $4)", u.Password, u.Email, hashedPwd, u.Phone)
+			result, err := db.Exec("INSERT INTO users (username, email, password, phone) VALUES ($1, $2, $3, $4)", u.Username, u.Email, hashedPwd, u.Phone)
 			if err != nil {
 				http.Error(w, "creating user failed in db", 400)
 				fmt.Println("db execution error", err)
