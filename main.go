@@ -51,7 +51,7 @@ func main() {
 		DefaultCost int = 10 // the cost that will actually be set if a cost below MinCost is passed into GenerateFromPassword
 	)
 
-	type user struct {
+	type User struct {
 		Username string `json:"username"`
 		Email    string `json:"email"`
 		Password string `json:"password"`
@@ -71,14 +71,14 @@ func main() {
 	// POST on /users
 	r.HandleFunc("/users", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("Post request /users")
-		var u user
+		var u User
 		// decode the payload
 		if err := json.NewDecoder(r.Body).Decode(&u); err != nil {
 			http.Error(w, "bad request", 400)
 			return
 		}
 		// check if email is in the db
-		var uu user
+		var uu User
 		err := db.QueryRow("SELECT email from users WHERE email=$1", u.Email).Scan(&uu.Email)
 		if err != nil {
 			fmt.Println("Ready to create account", err)
@@ -125,14 +125,14 @@ func main() {
 	// POST on /login
 	r.HandleFunc("/users/login", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("Post request /users/login")
-		var u user
+		var u User
 		// decode the payload
 		if err := json.NewDecoder(r.Body).Decode(&u); err != nil {
 			http.Error(w, "bad request", 400)
 			return
 		}
 		//check with dbquery
-		var uu user
+		var uu User
 
 		err := db.QueryRow("SELECT email, password from users WHERE email=$1", u.Email).Scan(&uu.Email, &uu.Password)
 		if err != nil {

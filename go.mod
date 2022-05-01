@@ -1,4 +1,4 @@
-module github.com/niubrandon/microservices-go
+module github.com/niubrandon/nebula-server
 
 go 1.17
 
