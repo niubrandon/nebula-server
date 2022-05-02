@@ -1,174 +1,22 @@
 package main
 
 import (
-	"database/sql"
-	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
-	"os"
-	"time"
 
-	"github.com/golang-jwt/jwt"
 	"github.com/gorilla/mux"
-	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
+	"github.com/niubrandon/nebula-server/handlers"
 	"github.com/rs/cors"
-	"golang.org/x/crypto/bcrypt"
 )
 
 func main() {
-	db_password := goDotEnvVariable("DB_PASSWORD")
-	// db connection
-	const (
-		host = "localhost"
-		port = 5432
-		// use dbuser instead of user
-		dbuser = "postgres"
-		dbname = "nebula"
-	)
-
-	// connection string
-	psqlconn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", host, port, dbuser, db_password, dbname)
-
-	//open database
-	db, err := sql.Open("postgres", psqlconn)
-	CheckError(err)
-
-	//close database
-	defer db.Close()
-
-	//check db
-	err = db.Ping()
-	CheckError(err)
-
-	fmt.Println("Connected!")
-
-	const (
-		MinCost     int = 4  // the minimum allowable cost as passed in to GenerateFromPassword
-		MaxCost     int = 31 // the maximum allowable cost as passed in to GenerateFromPassword
-		DefaultCost int = 10 // the cost that will actually be set if a cost below MinCost is passed into GenerateFromPassword
-	)
-
-	type User struct {
-		Username string `json:"username"`
-		Email    string `json:"email"`
-		Password string `json:"password"`
-		Phone    string `json:"phone"`
-	}
-
-	mySigningKey := []byte("AllYourBase")
-
-	type MyCustomClaims struct {
-		Foo string `json:"foo"`
-		jwt.StandardClaims
-	}
 
 	// TO-DO get OpenAPI Swagger
 	r := mux.NewRouter()
 
-	// POST on /users
-	r.HandleFunc("/users", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("Post request /users")
-		var u User
-		// decode the payload
-		if err := json.NewDecoder(r.Body).Decode(&u); err != nil {
-			http.Error(w, "bad request", 400)
-			return
-		}
-		// check if email is in the db
-		var uu User
-		err := db.QueryRow("SELECT email from users WHERE email=$1", u.Email).Scan(&uu.Email)
-		if err != nil {
-			fmt.Println("Ready to create account", err)
-			// can't find account, create new account
-			// encrpt password
-			hashedPwd := hashAndSalt([]byte(u.Password))
-			// add to db
-			result, err := db.Exec("INSERT INTO users (username, email, password, phone) VALUES ($1, $2, $3, $4)", u.Username, u.Email, hashedPwd, u.Phone)
-			if err != nil {
-				http.Error(w, "creating user failed in db", 400)
-				fmt.Println("db execution error", err)
-				return
-			}
-			fmt.Println("New user created:", result)
-			// send jwt token
-			// Create the Claims
-			claims := MyCustomClaims{
-				u.Email,
-				jwt.StandardClaims{
-					ExpiresAt: 15000,
-					Issuer:    "test",
-				},
-			}
-			// generate jwt token
-			token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-			ss, err := token.SignedString(mySigningKey)
-			expiresAt := time.Now().Add(1200 * time.Second)
-			fmt.Printf("%v %v", ss, err)
-			// send jwt as cookie
-			http.SetCookie(w, &http.Cookie{
-				Name:    "session_token",
-				Value:   ss,
-				Expires: expiresAt,
-			})
-			return
-		} else {
-
-			http.Error(w, "email exists", 400)
-			return
-		}
-
-	})
-
-	// POST on /login
-	r.HandleFunc("/users/login", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("Post request /users/login")
-		var u User
-		// decode the payload
-		if err := json.NewDecoder(r.Body).Decode(&u); err != nil {
-			http.Error(w, "bad request", 400)
-			return
-		}
-		//check with dbquery
-		var uu User
-
-		err := db.QueryRow("SELECT email, password from users WHERE email=$1", u.Email).Scan(&uu.Email, &uu.Password)
-		if err != nil {
-			fmt.Println("Query err", err)
-			//can't find account, sent http request
-			http.Error(w, "account not exists!", 401)
-			return
-		}
-		fmt.Println("printing row result from db", uu.Email, uu.Password)
-
-		if comparePasswords(uu.Password, []byte(u.Password)) {
-			// Create the Claims
-			claims := MyCustomClaims{
-				u.Email,
-				jwt.StandardClaims{
-					ExpiresAt: 15000,
-					Issuer:    "test",
-				},
-			}
-			// generate jwt token
-			token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-			ss, err := token.SignedString(mySigningKey)
-			expiresAt := time.Now().Add(1200 * time.Second)
-			fmt.Printf("%v %v", ss, err)
-			// send jwt as cookie
-			http.SetCookie(w, &http.Cookie{
-				Name:    "session_token",
-				Value:   ss,
-				Expires: expiresAt,
-			})
-			return
-		} else {
-			http.Error(w, "wrong password", 401)
-			return
-		}
-
-	}).Methods("POST")
+	r.HandleFunc("/users", handlers.CreateUser).Methods("POST")
+	r.HandleFunc("/users/login", handlers.Login).Methods("POST")
 
 	fmt.Println("Starting up on 8080")
 
@@ -189,35 +37,4 @@ func CheckError(err error) {
 	if err != nil {
 		panic(err)
 	}
-}
-
-func goDotEnvVariable(key string) string {
-
-	// load .env file
-	err := godotenv.Load(".env")
-
-	if err != nil {
-		log.Fatalf("Error loading .env file")
-	}
-
-	return os.Getenv(key)
-}
-
-func hashAndSalt(pwd []byte) string {
-	hash, err := bcrypt.GenerateFromPassword(pwd, bcrypt.MinCost)
-	if err != nil {
-		log.Println(err)
-	}
-
-	return string(hash)
-}
-
-func comparePasswords(hashedPwd string, plainPwd []byte) bool {
-	byteHash := []byte(hashedPwd)
-	err := bcrypt.CompareHashAndPassword(byteHash, plainPwd)
-	if err != nil {
-		log.Println(err)
-		return false
-	}
-	return true
 }

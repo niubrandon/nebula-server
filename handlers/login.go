@@ -7,30 +7,26 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt"
+	"github.com/niubrandon/nebula-server/db"
 )
 
 func Login(w http.ResponseWriter, r *http.Request) {
-	mySigningKey := []byte("AllYourBase")
-	fmt.Println("Post request /users/login")
+	fmt.Println("=> Post request /users/login")
 	var u User
 	// decode the payload
-	if err := json.NewDecoder(r.Body).Decode(&u); err != nil {
+	err := json.NewDecoder(r.Body).Decode(&u)
+	if err != nil {
 		http.Error(w, "bad request", 400)
 		return
 	}
-	//check with dbquery
-	var uu User
 
-	err := db.QueryRow("SELECT email, password from users WHERE email=$1", u.Email).Scan(&uu.Email, &uu.Password)
+	res, err := db.GetUser(u.Email)
 	if err != nil {
-		fmt.Println("Query err", err)
-		//can't find account, sent http request
-		http.Error(w, "account not exists!", 401)
-		return
+		http.Error(w, "user not found in db", 400)
 	}
-	fmt.Println("printing row result from db", uu.Email, uu.Password)
 
-	if comparePasswords(uu.Password, []byte(u.Password)) {
+	fmt.Println("=> found user infor", res.Email, res.Password)
+	if comparePasswords(res.Password, []byte(u.Password)) == true {
 		// Create the Claims
 		claims := MyCustomClaims{
 			u.Email,
@@ -40,6 +36,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 			},
 		}
 		// generate jwt token
+		mySigningKey := []byte("AllYourBase")
 		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 		ss, err := token.SignedString(mySigningKey)
 		expiresAt := time.Now().Add(1200 * time.Second)
